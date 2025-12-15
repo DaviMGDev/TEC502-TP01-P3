@@ -5,20 +5,20 @@ import (
 	"sync"
 )
 
-// MemoryRepository é uma implementação em memória da interface Repository
+// MemoryRepository é uma implementação em memória da interface Repository genérica.
 type MemoryRepository[T any] struct {
 	mu   sync.RWMutex
 	data map[string]T
 }
 
-// NewMemoryRepository cria uma nova instância de MemoryRepository
+// NewMemoryRepository constrói um MemoryRepository com mapa vazio.
 func NewMemoryRepository[T any]() Repository[T] {
 	return &MemoryRepository[T]{
 		data: make(map[string]T),
 	}
 }
 
-// Create adiciona uma nova entidade ao repositório
+// Create adiciona nova entidade; retorna erro se o id já existe.
 func (r *MemoryRepository[T]) Create(id string, entity T) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -31,7 +31,7 @@ func (r *MemoryRepository[T]) Create(id string, entity T) error {
 	return nil
 }
 
-// Read recupera uma entidade pelo ID
+// Read obtém entidade pelo id; retorna erro se não encontrada.
 func (r *MemoryRepository[T]) Read(id string) (T, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -45,7 +45,7 @@ func (r *MemoryRepository[T]) Read(id string) (T, error) {
 	return entity, nil
 }
 
-// Update atualiza uma entidade existente
+// Update substitui entidade existente pelo id; retorna erro se id não existe.
 func (r *MemoryRepository[T]) Update(id string, entity T) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -58,7 +58,7 @@ func (r *MemoryRepository[T]) Update(id string, entity T) error {
 	return nil
 }
 
-// Delete remove uma entidade do repositório
+// Delete remove entidade pelo id; retorna erro se id não existe.
 func (r *MemoryRepository[T]) Delete(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -71,7 +71,7 @@ func (r *MemoryRepository[T]) Delete(id string) error {
 	return nil
 }
 
-// List retorna todas as entidades do repositório
+// List retorna todas as entidades armazenadas.
 func (r *MemoryRepository[T]) List() ([]T, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -84,7 +84,7 @@ func (r *MemoryRepository[T]) List() ([]T, error) {
 	return list, nil
 }
 
-// ListBy retorna uma lista de entidades que correspondem a um filtro
+// ListBy retorna entidades que casam com o filtro fornecido.
 func (r *MemoryRepository[T]) ListBy(filter func(T) bool) ([]T, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -20,10 +20,10 @@ type CoordinatorInterface interface {
 
 // RaftCoordinator é a implementação que decide entre aplicar localmente ou encaminhar
 type RaftCoordinator struct {
-	raftNode  *raft.Raft                // Para verificar estado e aplicar logs
-	transport ClusterTransportInterface // Para encaminhar se não for líder (definido na Fase 1)
+	raftNode    *raft.Raft                // Para verificar estado e aplicar logs
+	transport   ClusterTransportInterface // Para encaminhar se não for líder
 	mqttAdapter mqtt.MQTTAdapterInterface // Para publicar respostas de volta ao cliente
-	timeout   time.Duration             // Tempo máximo de espera pelo consenso
+	timeout     time.Duration             // Tempo máximo de espera pelo consenso
 }
 
 // NewRaftCoordinator cria a instância

@@ -1,22 +1,23 @@
 package api
 
 import (
+	"cod-server/internal/auth"
 	"cod-server/internal/services"
 	"fmt"
-	"time"
 	shared_protocol "shared/protocol"
-	"cod-server/internal/auth"
+	"time"
 )
 
-// EventHandler é a implementação da EventHandlerInterface
+// EventHandler implementa EventHandlerInterface, roteando eventos para serviços apropriados.
+// Gerencia todas as operações voltadas ao usuário: registro, login, cartas, partidas e trocas.
 type EventHandler struct {
-	userService   services.UserServiceInterface
-	cardsService  services.CardsServiceInterface
-	matchService  services.MatchServiceInterface
-	authService   *auth.AuthService
+	userService  services.UserServiceInterface
+	cardsService services.CardsServiceInterface
+	matchService services.MatchServiceInterface
+	authService  *auth.AuthService
 }
 
-// NewEventHandler cria uma nova instância de EventHandler
+// NewEventHandler cria um novo EventHandler com dependências injetadas.
 func NewEventHandler(
 	userService services.UserServiceInterface,
 	cardsService services.CardsServiceInterface,
@@ -24,13 +25,14 @@ func NewEventHandler(
 	authService *auth.AuthService,
 ) EventHandlerInterface {
 	return &EventHandler{
-		userService:   userService,
-		cardsService:  cardsService,
-		matchService:  matchService,
-		authService:   authService,
+		userService:  userService,
+		cardsService: cardsService,
+		matchService: matchService,
+		authService:  authService,
 	}
 }
 
+// OnRegister processa solicitações de registro de usuário com validação e tratamento de erros.
 func (eh *EventHandler) OnRegister(event Event) Event {
 	username, ok1 := event.Payload["username"].(string)
 	password, ok2 := event.Payload["password"].(string)
@@ -130,6 +132,7 @@ func (eh *EventHandler) OnBuyPack(event Event) Event {
 	}
 }
 
+// OnOfferTrade processa ofertas de troca de cartas entre usuários.
 func (eh *EventHandler) OnOfferTrade(event Event) Event {
 	fromUserID, ok1 := event.Payload["from_user_id"].(string)
 	toUserID, ok2 := event.Payload["to_user_id"].(string)
@@ -144,9 +147,7 @@ func (eh *EventHandler) OnOfferTrade(event Event) Event {
 	}
 	return Event{
 		Event: shared_protocol.Event{
-			Method:    "offer_trade_ok",
-			Timestamp: time.Now(),
-			Payload:   event.Payload,
+			Method: "offer_trade_ok",
 		},
 	}
 }
@@ -172,6 +173,7 @@ func (eh *EventHandler) OnAcceptTrade(event Event) Event {
 	}
 }
 
+// OnStartMatch cria e inicia uma nova partida para o usuário.
 func (eh *EventHandler) OnStartMatch(event Event) Event {
 	userID, ok := event.Payload["user_id"].(string)
 	if !ok {
@@ -266,7 +268,7 @@ func (eh *EventHandler) validateTokenForUser(userID string, token string) error 
 	return nil
 }
 
-// makeErrorEvent é uma função helper para criar eventos de erro padronizados
+// makeErrorEvent é uma função auxiliar para criar eventos de erro padronizados
 func makeErrorEvent(method, message string) Event {
 	return Event{
 		Event: shared_protocol.Event{
@@ -276,5 +278,3 @@ func makeErrorEvent(method, message string) Event {
 		},
 	}
 }
-
-

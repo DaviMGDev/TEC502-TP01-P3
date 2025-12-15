@@ -19,7 +19,7 @@ func NewEventService(s *state.State) *EventService {
 	return &EventService{appState: s}
 }
 
-// createEvent é um helper genérico para criar um novo evento.
+// createEvent é um helper genérico que constrói um Event com campos padrão.
 func (s *EventService) createEvent(method string, payload map[string]interface{}) protocol.Event {
 	return protocol.Event{
 		Method:    method,
@@ -28,7 +28,8 @@ func (s *EventService) createEvent(method string, payload map[string]interface{}
 	}
 }
 
-// inferTopicForEvent determina o tópico MQTT para um determinado evento.
+// inferTopicFor determina o tópico MQTT apropriado para publicar um dado evento.
+// As rotas são baseadas no método do evento e contexto (userID, roomID, etc).
 func (s *EventService) inferTopicFor(event protocol.Event) string {
 	switch event.Method {
 	case "register", "login":
@@ -52,7 +53,8 @@ func (s *EventService) inferTopicFor(event protocol.Event) string {
 	}
 }
 
-// Publish serializa e publica um evento no tópico apropriado.
+// Publish serializa um evento em JSON e o publica no tópico MQTT apropriado.
+// Retorna um erro se o tópico for desconhecido ou se a publicação falhar.
 func (s *EventService) Publish(event protocol.Event) error {
 	topic := s.inferTopicFor(event)
 	if topic == "" {
@@ -69,12 +71,13 @@ func (s *EventService) Publish(event protocol.Event) error {
 	return token.Error()
 }
 
-// --- Funções específicas de criação de eventos ---
+// --- Funções de criação de eventos para comandos específicos do usuário ---
 
+// CreateChatEvent constrói um evento de chat a partir dos argumentos do usuário com validação básica.
 func (s *EventService) CreateChatEvent(args []string) protocol.Event {
 	content := strings.Join(args, " ")
 
-	// Basic validation
+	// Garante que a mensagem não está vazia
 	if len(content) < 1 {
 		return s.createEvent("chat", map[string]interface{}{
 			"error":   "message content cannot be empty",
@@ -89,8 +92,9 @@ func (s *EventService) CreateChatEvent(args []string) protocol.Event {
 	})
 }
 
+// CreateRegisterEvent constrói um evento de registro com validação para usuário e senha.
 func (s *EventService) CreateRegisterEvent(args []string) protocol.Event {
-	// Add validation: both username and password are required
+	// Garante que usuário e senha foram fornecidos
 	if len(args) < 2 {
 		return s.createEvent("register", map[string]interface{}{
 			"error":    "username and password are required",
@@ -102,7 +106,7 @@ func (s *EventService) CreateRegisterEvent(args []string) protocol.Event {
 	username := args[0]
 	password := args[1]
 
-	// Basic validation
+	// Validate username is not empty
 	if len(username) < 1 {
 		return s.createEvent("register", map[string]interface{}{
 			"error":    "username cannot be empty",
@@ -111,6 +115,7 @@ func (s *EventService) CreateRegisterEvent(args []string) protocol.Event {
 		})
 	}
 
+	// Validate password is not empty
 	if len(password) < 1 {
 		return s.createEvent("register", map[string]interface{}{
 			"error":    "password cannot be empty",
@@ -125,8 +130,9 @@ func (s *EventService) CreateRegisterEvent(args []string) protocol.Event {
 	})
 }
 
+// CreateLoginEvent builds a login event with validation for username and password.
 func (s *EventService) CreateLoginEvent(args []string) protocol.Event {
-	// Add validation: both username and password are required
+	// Ensure both username and password are provided
 	if len(args) < 2 {
 		return s.createEvent("login", map[string]interface{}{
 			"error":    "username and password are required",
@@ -138,7 +144,7 @@ func (s *EventService) CreateLoginEvent(args []string) protocol.Event {
 	username := args[0]
 	password := args[1]
 
-	// Basic validation
+	// Validate username is not empty
 	if len(username) < 1 {
 		return s.createEvent("login", map[string]interface{}{
 			"error":    "username cannot be empty",
@@ -147,6 +153,7 @@ func (s *EventService) CreateLoginEvent(args []string) protocol.Event {
 		})
 	}
 
+	// Validate password is not empty
 	if len(password) < 1 {
 		return s.createEvent("login", map[string]interface{}{
 			"error":    "password cannot be empty",
@@ -161,13 +168,15 @@ func (s *EventService) CreateLoginEvent(args []string) protocol.Event {
 	})
 }
 
+// CreateStartGameEvent builds an event to initiate a new game session.
 func (s *EventService) CreateStartGameEvent() protocol.Event {
 	return s.createEvent("start", map[string]interface{}{
 		"user_id": s.appState.UserID,
-//		"room_id": s.appState.RoomID,
+		//		"room_id": s.appState.RoomID,
 	})
 }
 
+// CreatePlayCardEvent builds an event to play a specific card in the current game.
 func (s *EventService) CreatePlayCardEvent(cardID string) protocol.Event {
 	return s.createEvent("play", map[string]interface{}{
 		"user_id": s.appState.UserID,
@@ -176,6 +185,7 @@ func (s *EventService) CreatePlayCardEvent(cardID string) protocol.Event {
 	})
 }
 
+// CreateSurrenderEvent builds an event to surrender the current game.
 func (s *EventService) CreateSurrenderEvent() protocol.Event {
 	return s.createEvent("surrender", map[string]interface{}{
 		"user_id": s.appState.UserID,
@@ -183,6 +193,7 @@ func (s *EventService) CreateSurrenderEvent() protocol.Event {
 	})
 }
 
+// CreateJoinGameEvent builds an event to join an existing game by room ID.
 func (s *EventService) CreateJoinGameEvent(roomID string) protocol.Event {
 	return s.createEvent("join", map[string]interface{}{
 		"user_id": s.appState.UserID,
@@ -190,6 +201,7 @@ func (s *EventService) CreateJoinGameEvent(roomID string) protocol.Event {
 	})
 }
 
+// CreateBuyEvent builds an event to purchase an item from the store.
 func (s *EventService) CreateBuyEvent(itemID string) protocol.Event {
 	return s.createEvent("buy", map[string]interface{}{
 		"user_id": s.appState.UserID,
@@ -197,10 +209,11 @@ func (s *EventService) CreateBuyEvent(itemID string) protocol.Event {
 	})
 }
 
+// CreateExchangeEvent builds an event to exchange cards with other players.
 func (s *EventService) CreateExchangeEvent(cardIDs []string) protocol.Event {
 	return s.createEvent("exchange", map[string]interface{}{
 		"user_id":  s.appState.UserID,
 		"room_id":  s.appState.RoomID,
 		"card_ids": cardIDs,
 	})
-}	
+}

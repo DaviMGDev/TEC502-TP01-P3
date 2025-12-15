@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-// GinHttpTransport implementa a ClusterTransportInterface
+// GinHttpTransport implements ClusterTransportInterface using Gin + Resty for inter-node communication.
 type GinHttpTransport struct {
 	bindAddress string
 	nodeID      string
@@ -24,7 +24,7 @@ type GinHttpTransport struct {
 	logger      *log.Logger
 }
 
-// NewGinHttpTransport cria a instância do transporte
+// NewGinHttpTransport constructs the HTTP transport, sets up routes and logging.
 func NewGinHttpTransport(bindAddress, nodeID string, raftNode *raft.Raft) ClusterTransportInterface {
 	logger := log.With("component", "http-transport")
 
@@ -49,7 +49,7 @@ func NewGinHttpTransport(bindAddress, nodeID string, raftNode *raft.Raft) Cluste
 	return transport
 }
 
-// LoggerMiddleware é um middleware Gin para logging estruturado com charmbracelet/log
+// LoggerMiddleware is a Gin middleware for structured logging with charmbracelet/log.
 func LoggerMiddleware(logger *log.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -104,7 +104,7 @@ func (t *GinHttpTransport) setupRoutes() {
 	group.POST("/command", t.handleCommand)
 }
 
-// Start inicia o servidor HTTP (Gin) em background
+// Start launches the Gin HTTP server asynchronously in the background.
 func (t *GinHttpTransport) Start() error {
 	t.logger.Infof("Iniciando servidor HTTP em %s", t.bindAddress)
 	go func() {
@@ -115,7 +115,7 @@ func (t *GinHttpTransport) Start() error {
 	return nil
 }
 
-// JoinCluster é usado por um nó novo para pedir entrada no cluster
+// JoinCluster is used by a new node to request admission to the cluster.
 func (t *GinHttpTransport) JoinCluster(targetAddress string, myRaftID string, myRaftAddress string) error {
 	req := JoinRequest{
 		NodeID:      myRaftID,
@@ -138,7 +138,7 @@ func (t *GinHttpTransport) JoinCluster(targetAddress string, myRaftID string, my
 	return nil
 }
 
-// ForwardCommand é usado por um nó seguidor para repassar um evento ao líder
+// ForwardCommand forwards a serialized event to the cluster leader for application.
 func (t *GinHttpTransport) ForwardCommand(leaderAddress string, eventBytes []byte) error {
 	t.logger.Debugf("Encaminhando comando para o líder em %s", leaderAddress)
 	resp, err := t.client.R().
@@ -155,7 +155,7 @@ func (t *GinHttpTransport) ForwardCommand(leaderAddress string, eventBytes []byt
 	return nil
 }
 
-// Handlers do Gin (privados)
+// Gin HTTP handlers (internal)
 func (t *GinHttpTransport) handleJoin(c *gin.Context) {
 	var req JoinRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

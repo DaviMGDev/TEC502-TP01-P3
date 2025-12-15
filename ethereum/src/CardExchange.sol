@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./CardNFT.sol";
 
+/// @title CardExchange - Facilita trocas de cartas entre jogadores
+/// @notice Permite propor, aceitar ou rejeitar ofertas de troca de cartas
+/// @dev Usa ReentrancyGuard para evitar reentrância durante transferências
 contract CardExchange is ReentrancyGuard {
     CardNFT public cardNFT;
     
@@ -32,12 +35,18 @@ contract CardExchange is ReentrancyGuard {
         cardNFT = _cardNFT;
     }
     
+    /// @notice Propõe uma troca de cartas para outro jogador
+    /// @param toPlayer Endereço do jogador com quem trocar
+    /// @param offeredCardIds IDs das cartas oferecidas pelo remetente
+    /// @param requestedCardIds IDs das cartas solicitadas
+    /// @return ID único da oferta para rastreamento
+    /// @dev Verifica se o remetente possui todas as cartas oferecidas antes de criar a oferta
     function offerExchange(
         address toPlayer,
         uint256[] memory offeredCardIds,
         uint256[] memory requestedCardIds
     ) external nonReentrant returns (uint256) {
-        // Verify that the sender owns all offered cards
+        // Verifica se o remetente possui todas as cartas oferecidas
         for (uint256 i = 0; i < offeredCardIds.length; i++) {
             require(cardNFT.ownerOf(offeredCardIds[i]) == msg.sender, "Sender doesn't own offered card");
         }
@@ -59,22 +68,25 @@ contract CardExchange is ReentrancyGuard {
         return newOfferId;
     }
     
+    /// @notice Aceita uma oferta de troca pendente e executa a troca
+    /// @param offerId ID da oferta a ser aceita
+    /// @dev Verifica se o jogador alvo possui as cartas solicitadas; transfere propriedade de forma atômica
     function acceptExchange(uint256 offerId) external nonReentrant {
         ExchangeOffer storage offer = exchangeOffers[offerId];
         require(offer.status == ExchangeStatus.Pending, "Exchange is not pending");
         require(msg.sender == offer.toPlayer, "Only the target player can accept");
         
-        // Verify that the target player owns all requested cards
+        // Verifica se o jogador alvo possui todas as cartas solicitadas
         for (uint256 i = 0; i < offer.requestedCardIds.length; i++) {
             require(cardNFT.ownerOf(offer.requestedCardIds[i]) == msg.sender, "Target player doesn't own requested card");
         }
         
-        // Transfer ownership of offered cards from sender to target
+        // Transfere as cartas oferecidas do remetente para o alvo
         for (uint256 i = 0; i < offer.offeredCardIds.length; i++) {
             cardNFT.transferFrom(offer.fromPlayer, msg.sender, offer.offeredCardIds[i]);
         }
         
-        // Transfer ownership of requested cards from target to sender
+        // Transfere as cartas solicitadas do alvo para o remetente
         for (uint256 i = 0; i < offer.requestedCardIds.length; i++) {
             cardNFT.transferFrom(msg.sender, offer.fromPlayer, offer.requestedCardIds[i]);
         }
@@ -85,6 +97,9 @@ contract CardExchange is ReentrancyGuard {
         emit ExchangeCompleted(offerId);
     }
     
+    /// @notice Rejeita uma oferta de troca pendente
+    /// @param offerId ID da oferta a ser rejeitada
+    /// @dev Apenas o jogador alvo pode rejeitar
     function rejectExchange(uint256 offerId) external nonReentrant {
         ExchangeOffer storage offer = exchangeOffers[offerId];
         require(offer.status == ExchangeStatus.Pending, "Exchange is not pending");

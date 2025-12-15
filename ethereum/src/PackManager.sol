@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./CardNFT.sol";
 
+/// @title PackManager - Gerencia criação, compra e abertura de pacotes de cartas
+/// @notice Permite que o proprietário crie pacotes e usuários comprem e abram para receber cartas NFT
+/// @dev Usa ReentrancyGuard para prevenir reentrância durante compras
 contract PackManager is Ownable, ReentrancyGuard {
     CardNFT public cardNFT;
     
@@ -39,6 +42,12 @@ contract PackManager is Ownable, ReentrancyGuard {
         cardNFT = _cardNFT;
     }
     
+    /// @notice Cria um novo pacote de cartas disponível para compra
+    /// @param name Nome de exibição do pacote
+    /// @param price Custo em wei para comprar um pacote
+    /// @param totalSupply Número de pacotes disponíveis
+    /// @param cardsInPack Quantidade de cartas cunhadas quando o pacote é aberto
+    /// @dev Somente o proprietário do contrato pode chamar
     function createPack(string memory name, uint256 price, uint256 totalSupply, uint256 cardsInPack) external onlyOwner {
         packs[packCounter] = Pack({
             id: packCounter,
@@ -53,6 +62,9 @@ contract PackManager is Ownable, ReentrancyGuard {
         packCounter++;
     }
     
+    /// @notice Compra um pacote enviando o valor exato
+    /// @param packId ID do pacote a ser comprado
+    /// @dev Requer pagamento exato igual ao preço do pacote; decrementa o estoque
     function purchasePack(uint256 packId) external payable nonReentrant {
         Pack storage pack = packs[packId];
         require(pack.available, "Pack is not available");
@@ -67,9 +79,12 @@ contract PackManager is Ownable, ReentrancyGuard {
         emit PackPurchased(packId, msg.sender);
     }
     
+    /// @notice Abre um pacote comprado e cunha cartas como NFTs para o chamador
+    /// @param packId ID do pacote a ser aberto
+    /// @dev Em produção, deveria verificar propriedade do pacote antes de abrir
     function openPack(uint256 packId) external nonReentrant {
-        // In a real implementation, this would check if the user actually owns this pack
-        // For this implementation, we'll assume the user can open a pack after purchasing
+        // Em uma implementação real, verificaria se o usuário realmente possui este pacote
+        // Para esta implementação, assumimos que o usuário pode abrir após comprar
         
         uint256[] memory cardIds = new uint256[](packs[packId].cardsInPack);
         

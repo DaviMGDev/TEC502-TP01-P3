@@ -9,17 +9,17 @@ import (
 )
 
 func main() {
-	// 1. Inicializa o estado (inclui UI e cliente MQTT)
+	// Inicializa o estado da aplicação com UI e conexão do cliente MQTT
 	appState := state.New()
 
-	// 2. Inicializa os serviços, injetando o estado
+	// Cria a camada de serviço para publicação de eventos e tratamento de subscrições
 	eventSvc := services.NewEventService(appState)
 	subSvc := services.NewSubscriptionService(appState)
 
-	// 3. Inicializa o gerenciador de comandos
+	// Configura o gerenciador de comandos para lidar com comandos do usuário com injeção de dependências
 	cmdManager := commands.NewManager(eventSvc, appState)
 
-	// 4. Configura o Mux de comandos (roteador de texto)
+	// Cria e registra todos os comandos disponíveis no roteador de comandos
 	mux := utils.NewMux[func(args []string) error](func(args []string) error {
 		appState.Chat.Write("Unknown command. Type /help for a list of commands.")
 		return nil
@@ -35,10 +35,10 @@ func main() {
 	mux.Register("help", cmdManager.ExecHelp)
 	mux.Register("exit", cmdManager.ExecExit)
 
-	// 5. Inicia as inscrições nos tópicos MQTT
+	// Subscreve a todos os tópicos MQTT necessários para receber atualizações e notificações do jogo
 	subSvc.SubscribeToAll()
 
-	// 6. Inicia o loop da UI e o processamento de entrada
+	// Inicia a UI de chat interativa e começa a processar entrada do usuário
 	appState.Chat.Start(func() {
 		for input := range appState.Chat.Inputs {
 			command, args := utils.ParseCommand(strings.TrimSpace(input))
@@ -50,6 +50,6 @@ func main() {
 		}
 	})
 
-	// Mantém a aplicação rodando indefinidamente
+	// Bloqueia indefinidamente para manter a aplicação em execução
 	select {}
 }

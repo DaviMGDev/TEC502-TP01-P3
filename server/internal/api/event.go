@@ -4,12 +4,12 @@ import (
 	shared_protocol "shared/protocol"
 )
 
-// Wrapper type to allow custom methods
+// Tipo wrapper para permitir métodos customizados
 type Event struct {
 	shared_protocol.Event
 }
 
-// Wrapper functions to maintain the same interface
+// Funções wrapper para manter a mesma interface
 func (event Event) Json() ([]byte, error) {
 	return event.Event.Json()
 }

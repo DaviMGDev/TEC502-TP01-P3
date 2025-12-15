@@ -1,8 +1,15 @@
 package persistence
 
+// SQL-backed repository interfaces for domain models with a manager for resource sharing.
+// UserRepository defines CRUD operations for users backed by a SQL database.
+// CardRepository defines CRUD operations for cards backed by a SQL database.
+// MatchRepository defines CRUD operations for matches backed by a SQL database.
+// RepositoryManager holds shared SQL DB connections for repository implementations.
+// NewRepositoryManager constructs a manager for sharing DB connections across repos.
+
 import (
-	"database/sql"
 	"cod-server/internal/domain"
+	"database/sql"
 )
 
 type UserRepository interface {

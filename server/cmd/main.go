@@ -10,13 +10,13 @@ import (
 	"cod-server/internal/services"
 	"database/sql"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
-	"io"
 
 	"github.com/charmbracelet/log"
 	paho "github.com/eclipse/paho.mqtt.golang"
@@ -27,7 +27,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// getEnv carrega uma variável de ambiente ou retorna um valor padrão.
+// getEnv carrega uma variável de ambiente ou retorna um valor padrão se não for encontrada.
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -36,13 +36,13 @@ func getEnv(key, fallback string) string {
 }
 
 func main() {
-	// Carrega o arquivo .env (se existir)
+	// Carrega arquivo .env se existir; avisa mas continua se falhar
 	err := godotenv.Load()
 	if err != nil {
 		log.Warnf("Aviso: Não foi possível carregar o arquivo .env: %v. Usando variáveis de ambiente existentes ou padrões.", err)
 	}
 
-	// Carrega as configurações das variáveis de ambiente
+	// Carrega configuração de variáveis de ambiente com valores padrão sensatos
 	raftDataDir := getEnv("COD_RAFT_DATA_DIR", "./raft-data")
 	raftBindAddr := getEnv("COD_RAFT_BIND_ADDR", "127.0.0.1:10000")
 	httpBindAddr := getEnv("COD_HTTP_BIND_ADDR", "127.0.0.1:8080")
@@ -53,14 +53,14 @@ func main() {
 
 	log.Info("Iniciando servidor COD...")
 
-	// 1. Inicialização de Repositórios e Serviços
+	// Inicializa repositórios de dados e serviços com pool de conexões
 	db, err := sql.Open("sqlite3", "./game_data.db")
 	if err != nil {
 		log.Fatal("falha ao abrir banco de dados SQLite: %v", err)
 	}
 	defer db.Close()
 
-	// Configurações para uso concorrente
+	// Configura pool de conexões SQLite para acesso concorrente
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -73,7 +73,7 @@ func main() {
 	cardRepo := persistence.NewCardRepoAdapter(sqlCardRepo)
 	matchRepo := persistence.NewMatchRepoAdapter(sqlMatchRepo)
 
-	// Adicionando cache para otimizar desempenho
+	// Envolve repositórios com camada de cache para otimização de desempenho
 	userRepo = cache.NewCachedUserRepository(userRepo)
 	cardRepo = cache.NewCachedCardRepository(cardRepo)
 	matchRepo = cache.NewCachedMatchRepository(matchRepo)
@@ -82,20 +82,19 @@ func main() {
 	cardsService := services.NewCardsService(cardRepo, userRepo)
 	matchService := services.NewMatchService(matchRepo, cardRepo, userRepo)
 
-	// 2. Inicialização dos Handlers da API
+	// Inicializa manipulador de eventos da API com serviços e autenticação
 	authService := auth.NewAuthService("") // Usa a chave padrão
 	eventHandler := api.NewEventHandler(userService, cardsService, matchService, authService)
 
-	// 3. Inicialização da FSM (Máquina de Estados do Raft)
+	// Cria Máquina de Estados Finitos do Raft para gerenciamento de estado distribuído
 	fsm := cluster.NewClusterFSM(eventHandler)
 
-	// 4. Configuração do Raft
+	// Configura e inicializa consenso Raft com transporte TCP
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(nodeID)
-	
+
 	log.SetLevel(log.DebugLevel)
 	var raftLogger io.Writer = log.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel}).Writer()
-
 
 	addr, err := net.ResolveTCPAddr("tcp", raftBindAddr)
 	if err != nil {
@@ -144,13 +143,13 @@ func main() {
 		}
 	}
 
-	// 5. Inicialização da API Interna (HTTP)
+	// Inicializa transporte HTTP da API para comunicação entre nós
 	httpTransport := cluster.NewGinHttpTransport(httpBindAddr, nodeID, raftNode)
 	if err := httpTransport.Start(); err != nil {
 		log.Fatal("Falha ao iniciar transporte HTTP: %v", err)
 	}
 
-	// 6. Configuração do MQTT
+	// Configura adaptador MQTT para comunicação de eventos do cliente
 	mqttAdapter, err := mqtt.NewMQTTAdapter(mqttBrokerAddr, nodeID)
 	if err != nil {
 		log.Fatal("Falha ao criar adaptador MQTT: %v", err)
@@ -160,18 +159,18 @@ func main() {
 	}
 	defer mqttAdapter.Disconnect()
 
-	// 7. Inicialização do Coordenador
+	// Cria coordenador Raft para gerenciar roteamento de eventos e consenso
 	coordinator := cluster.NewRaftCoordinator(raftNode, httpTransport, mqttAdapter)
 
-	// Inscrever-se em todos os tópicos relevantes para receber eventos do cliente
-	// Isso inclui os tópicos que o cliente está usando conforme definido em client/internal/services/event_service.go
+	// Inscreve-se em todos os tópicos de eventos do cliente
+	// Tópicos correspondem aos definidos no EventService do cliente
 	tópicos := []string{
 		"user/register",
 		"user/login",
-		"chat/room/+",  // Usando + como wildcard para qualquer room
+		"chat/room/+", // Usando + como wildcard para qualquer room
 		"game/start_game",
-		"game/+/play_card",  // Wildcard para room específico
-		"game/+/surrender",  // Wildcard para room específico
+		"game/+/play_card", // Wildcard para room específico
+		"game/+/surrender", // Wildcard para room específico
 		"game/join_game",
 		"store/buy",
 		"cards/+/exchange+", // Wildcard para room e user
@@ -192,7 +191,7 @@ func main() {
 		})
 	}
 
-	// 8. Serviço de Descoberta
+	// Inicializa serviço de descoberta de pares para associação automática ao cluster
 	discovery := cluster.NewDiscoveryService(string(transport.LocalAddr()), httpBindAddr)
 	discovery.OnPeerDiscovered = func(peerIp string) {
 		targetAddr := fmt.Sprintf("%s:%s", peerIp, "8080") // Assumindo porta 8080
@@ -226,7 +225,7 @@ func main() {
 	}
 	discovery.Start()
 
-	// 9. Bloqueio para manter o servidor rodando
+	// Bloqueia até que o sinal de desligamento (Ctrl-C) seja recebido, então desliga graciosamente
 	log.Info("Servidor COD rodando. Pressione CTRL-C para sair.")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)

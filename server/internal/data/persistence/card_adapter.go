@@ -5,7 +5,7 @@ import (
 	"cod-server/internal/domain"
 )
 
-// Adaptador para tornar SqlCardRepository compatível com data.Repository[domain.CardInterface]
+// CardRepoAdapter adapta um CardRepository baseado em SQL para data.Repository[domain.CardInterface].
 type CardRepoAdapter struct {
 	repo CardRepository
 }
@@ -55,7 +55,7 @@ func (a *CardRepoAdapter) List() ([]domain.CardInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	interfaces := make([]domain.CardInterface, len(cards))
 	for i, card := range cards {
 		interfaces[i] = card
@@ -68,7 +68,7 @@ func (a *CardRepoAdapter) ListBy(filter func(domain.CardInterface) bool) ([]doma
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var result []domain.CardInterface
 	for _, card := range cards {
 		if filter(card) {

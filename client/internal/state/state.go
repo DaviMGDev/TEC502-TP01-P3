@@ -8,16 +8,18 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-// State detém todas as instâncias e variáveis de estado da aplicação.
+// State mantém todas as instâncias e variáveis de estado para toda a aplicação.
+// Isso inclui identidade do usuário, contexto da sala, conexão do cliente MQTT e camada UI.
 type State struct {
-	UserID   string
-	RoomID   string
-	Client   mqtt.Client
-	Chat     *ui.Chat
+	UserID string      // O identificador único do usuário atualmente logado
+	RoomID string      // O identificador da sala de chat/jogo atual
+	Client mqtt.Client // Cliente MQTT para operações de publicação/subscrição
+	Chat   *ui.Chat    // UI baseada em terminal para interação do usuário
 }
 
-// New inicializa e retorna um novo estado da aplicação,
-// incluindo a conexão com o broker MQTT.
+// New initializes and returns a new application State instance,
+// establishing the connection to the MQTT broker during initialization.
+// Panics if the MQTT connection fails to prevent silent failures.
 func New() *State {
 	chat := ui.NewChat()
 

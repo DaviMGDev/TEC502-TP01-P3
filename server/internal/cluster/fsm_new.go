@@ -9,12 +9,13 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
-// FSMSnapshot representa um snapshot serializado do estado para tolerância a falhas do Raft.
+// FSMSnapshot represents a serialized state snapshot for Raft fault tolerance.
+// It implements the raft.FSMSnapshot interface for persistence.
 type FSMSnapshot struct {
 	data []byte
 }
 
-// Persist escreve os dados do snapshot no sink fornecido e o fecha em caso de sucesso.
+// Persist writes the snapshot data to the provided sink and closes it on success.
 func (s *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
 		if _, err := sink.Write(s.data); err != nil {
@@ -31,23 +32,25 @@ func (s *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 	return nil
 }
 
-// Release é chamado quando o snapshot não é mais necessário.
+// Release is called when the snapshot is no longer needed; currently a no-op.
 func (s *FSMSnapshot) Release() {}
 
-// ClusterFSM é a FSM do Raft que converte logs comprometidos do Raft em ações do sistema.
+// ClusterFSM is the Raft Finite State Machine that converts committed Raft logs into system actions.
+// It delegates business logic to an event handler.
 type ClusterFSM struct {
-	// eventHandler roteia eventos para manipuladores de lógica de negócios apropriados
+	// eventHandler processes game logic based on event method
 	eventHandler api.EventHandlerInterface
 }
 
-// NewClusterFSM cria um novo ClusterFSM com injeção de dependência.
+// NewClusterFSM creates a new ClusterFSM with dependency injection of the event handler.
 func NewClusterFSM(handler api.EventHandlerInterface) *ClusterFSM {
 	return &ClusterFSM{
 		eventHandler: handler,
 	}
 }
 
-// Apply é chamado quando uma entrada de log é comprometida para convertê-la em ações do sistema.
+// Apply is called by Raft when a log entry is committed to the consensus log.
+// It deserializes the log data and routes to the appropriate event handler method.
 func (fsm *ClusterFSM) Apply(log *raft.Log) interface{} {
 	var event api.Event
 	if err := json.Unmarshal(log.Data, &event); err != nil {
@@ -78,25 +81,25 @@ func (fsm *ClusterFSM) Apply(log *raft.Log) interface{} {
 	}
 }
 
-// Snapshot retorna uma cópia pontual do estado atual do sistema.
+// Snapshot returns a point-in-time copy of the current system state.
+// TODO: Implement full state serialization of repositories for production use.
 func (fsm *ClusterFSM) Snapshot() (raft.FSMSnapshot, error) {
-
-	// TODO: Implementar serialização completa do estado dos repositórios para produção.
-	// Atualmente retorna um snapshot vazio como placeholder.
-	snapData := []byte("{}") // Placeholder para dados reais de estado
+	// Note: Currently returns an empty snapshot placeholder.
+	// Full implementation would serialize all repository state.
+	snapData := []byte("{}")
 
 	return &FSMSnapshot{data: snapData}, nil
 }
 
-// Restore reconstrói o estado da FSM a partir de um backup de snapshot.
+// Restore reconstructs the FSM state from a snapshot.
+// TODO: Implement full state deserialization and repopulation of repositories.
 func (fsm *ClusterFSM) Restore(rc io.ReadCloser) error {
-	// Lê dados do snapshot; apenas implementação placeholder.
+	// Read snapshot data; currently discarded as placeholder implementation.
+	// Full implementation would deserialize and repopulate repository state.
 	_, err := io.ReadAll(rc)
 	if err != nil {
 		return fmt.Errorf("failed to read snapshot data: %w", err)
 	}
-
-	// TODO: Desserializar e repopular estado do repositório para produção.
 
 	return nil
 }

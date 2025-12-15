@@ -1,5 +1,7 @@
 package persistence
 
+// SqlCardRepository implementa CardRepository usando banco SQLite.
+
 import (
 	"database/sql"
 	"fmt"
@@ -14,7 +16,13 @@ type SqlCardRepository struct {
 }
 
 func NewSqlCardRepository(db *sql.DB) CardRepository {
-	// Create table if not exists
+	// Garante que a tabela cards exista na inicialização.
+	// Create insere uma nova carta.
+	// Read busca carta por id; retorna erro se não encontrar.
+	// Update modifica dono e tipo para o id fornecido.
+	// Delete remove uma carta; retorna erro se nenhuma linha for afetada.
+	// List recupera todas as cartas do banco.
+	// ListBy filtra cartas em memória usando o predicado fornecido.
 	query := `CREATE TABLE IF NOT EXISTS cards (
 		id TEXT PRIMARY KEY,
 		owner_id TEXT NOT NULL,
@@ -22,50 +30,50 @@ func NewSqlCardRepository(db *sql.DB) CardRepository {
 	)`
 	_, err := db.Exec(query)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create cards table: %v", err))
+		panic(fmt.Sprintf("Falha ao criar tabela cards: %v", err))
 	}
 
 	return &SqlCardRepository{db: db}
 }
 
 func (r *SqlCardRepository) Create(id string, card *domain.Card) error {
-	_, err := r.db.Exec("INSERT INTO cards (id, owner_id, card_type) VALUES (?, ?, ?)", 
+	_, err := r.db.Exec("INSERT INTO cards (id, owner_id, card_type) VALUES (?, ?, ?)",
 		id, card.OwnerID, card.Type)
 	return err
 }
 
 func (r *SqlCardRepository) Read(id string) (*domain.Card, error) {
 	var card domain.Card
-	
+
 	err := r.db.QueryRow("SELECT id, owner_id, card_type FROM cards WHERE id = ?", id).
 		Scan(&card.ID, &card.OwnerID, &card.Type)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("card not found")
 		}
 		return nil, err
 	}
-	
+
 	return &card, nil
 }
 
 func (r *SqlCardRepository) Update(id string, card *domain.Card) error {
-	result, err := r.db.Exec("UPDATE cards SET owner_id = ?, card_type = ? WHERE id = ?", 
+	result, err := r.db.Exec("UPDATE cards SET owner_id = ?, card_type = ? WHERE id = ?",
 		card.OwnerID, card.Type, id)
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return fmt.Errorf("card not found")
 	}
-	
+
 	return nil
 }
 
@@ -74,16 +82,16 @@ func (r *SqlCardRepository) Delete(id string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return fmt.Errorf("card not found")
 	}
-	
+
 	return nil
 }
 
@@ -93,19 +101,19 @@ func (r *SqlCardRepository) List() ([]*domain.Card, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var cards []*domain.Card
 	for rows.Next() {
 		var card domain.Card
-		
+
 		err := rows.Scan(&card.ID, &card.OwnerID, &card.Type)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		cards = append(cards, &card)
 	}
-	
+
 	return cards, nil
 }
 
@@ -114,13 +122,13 @@ func (r *SqlCardRepository) ListBy(filter func(*domain.Card) bool) ([]*domain.Ca
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var filteredCards []*domain.Card
 	for _, card := range allCards {
 		if filter(card) {
 			filteredCards = append(filteredCards, card)
 		}
 	}
-	
+
 	return filteredCards, nil
 }

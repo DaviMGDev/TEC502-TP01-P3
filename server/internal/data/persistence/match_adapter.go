@@ -5,7 +5,7 @@ import (
 	"cod-server/internal/domain"
 )
 
-// Adaptador para tornar SqlMatchRepository compatível com data.Repository[domain.MatchInterface]
+// MatchRepoAdapter adapta um MatchRepository baseado em SQL para data.Repository[domain.MatchInterface].
 type MatchRepoAdapter struct {
 	repo MatchRepository
 }
@@ -20,9 +20,8 @@ func (a *MatchRepoAdapter) Create(id string, entity domain.MatchInterface) error
 		return a.repo.Create(id, &domain.Match{
 			ID:      entity.GetID(),
 			Players: entity.GetPlayers(),
-			// Nota: os campos Moves, Scores seriam difíceis de mapear
-			// devido à complexidade da estrutura
-			// Isso exigiria uma abordagem mais elaborada
+			// Obs.: Campos complexos como Moves e Scores são omitidos ao construir via métodos de interface.
+			// Uma implementação completa exigiria getters adicionais na interface.
 		})
 	}
 	return a.repo.Create(id, match)
@@ -42,7 +41,7 @@ func (a *MatchRepoAdapter) Update(id string, entity domain.MatchInterface) error
 		return a.repo.Update(id, &domain.Match{
 			ID:      entity.GetID(),
 			Players: entity.GetPlayers(),
-			// Similar issue com campos complexos
+			// Problema similar com campos complexos exigindo getters adicionais na interface.
 		})
 	}
 	return a.repo.Update(id, match)
@@ -57,7 +56,7 @@ func (a *MatchRepoAdapter) List() ([]domain.MatchInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	interfaces := make([]domain.MatchInterface, len(matches))
 	for i, match := range matches {
 		interfaces[i] = match
@@ -70,7 +69,7 @@ func (a *MatchRepoAdapter) ListBy(filter func(domain.MatchInterface) bool) ([]do
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var result []domain.MatchInterface
 	for _, match := range matches {
 		if filter(match) {

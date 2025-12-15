@@ -16,12 +16,12 @@ const (
 	DiscoveryMessage  = "COD_SERVER_DISCOVERY"
 )
 
-// DiscoveryServiceInterface define o contrato para o serviço de descoberta
+// DiscoveryServiceInterface defines the contract for the peer discovery service.
 type DiscoveryServiceInterface interface {
 	Start()
 }
 
-// DiscoveryService gerencia a descoberta automática de nós via UDP e HTTP
+// DiscoveryService manages automatic peer discovery via UDP broadcast and optional HTTP checks.
 type DiscoveryService struct {
 	raftAddress      string
 	httpAddress      string
@@ -33,28 +33,28 @@ type DiscoveryService struct {
 	logger           *log.Logger
 }
 
-// NewDiscoveryService cria uma nova instância
+// NewDiscoveryService creates a new DiscoveryService with default intervals and message signature.
 func NewDiscoveryService(raftAddress, httpAddress string) *DiscoveryService {
 	logger := log.With("component", "discovery")
 	return &DiscoveryService{
-		raftAddress:      raftAddress,
-		httpAddress:      httpAddress,
-		Port:             DiscoveryPort,
-		Interval:         DiscoveryInterval,
-		Message:          DiscoveryMessage,
-		knownPeers:       make([]string, 0),
-		logger:           logger,
+		raftAddress: raftAddress,
+		httpAddress: httpAddress,
+		Port:        DiscoveryPort,
+		Interval:    DiscoveryInterval,
+		Message:     DiscoveryMessage,
+		knownPeers:  make([]string, 0),
+		logger:      logger,
 	}
 }
 
-// Start inicia as rotinas de escuta e broadcast
+// Start launches background goroutines for listening, broadcasting, and periodic checks.
 func (ds *DiscoveryService) Start() {
 	go ds.listen()
 	go ds.broadcast()
 	go ds.periodicPeerCheck() // Verifica periodicamente os nós conhecidos via HTTP
 }
 
-// addKnownPeer adiciona um nó aos nós conhecidos
+// addKnownPeer adds a peer to the known peers list if not already present.
 func (ds *DiscoveryService) addKnownPeer(peerRaftAddress string) {
 	for _, knownPeer := range ds.knownPeers {
 		if knownPeer == peerRaftAddress {
@@ -64,7 +64,7 @@ func (ds *DiscoveryService) addKnownPeer(peerRaftAddress string) {
 	ds.knownPeers = append(ds.knownPeers, peerRaftAddress)
 }
 
-// discoverViaHTTP tenta descobrir nós via HTTP
+// discoverViaHTTP attempts to discover peers by probing an HTTP discovery endpoint.
 func (ds *DiscoveryService) discoverViaHTTP(targetAddress string) error {
 	// Extrair IP do endereço Raft
 	parts := strings.Split(targetAddress, ":")
@@ -93,7 +93,7 @@ func (ds *DiscoveryService) discoverViaHTTP(targetAddress string) error {
 	return nil
 }
 
-// periodicPeerCheck verifica periodicamente nós conhecidos
+// periodicPeerCheck periodically verifies known peers; placeholder for future liveness checks.
 func (ds *DiscoveryService) periodicPeerCheck() {
 	ticker := time.NewTicker(10 * time.Second) // Verifica a cada 10 segundos
 	defer ticker.Stop()

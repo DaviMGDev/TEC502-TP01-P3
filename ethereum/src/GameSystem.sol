@@ -8,6 +8,9 @@ import "./PackManager.sol";
 import "./CardExchange.sol";
 import "./UserManager.sol";
 
+/// @title GameSystem - Orquestrador principal do jogo Cards of Despair
+/// @notice Implanta e coordena todos os subsistemas do jogo: cartas, usuários, pacotes, troca e gameplay
+/// @dev Este contrato é proprietário do CardNFT e serve como ponto de entrada do sistema
 contract GameSystem is Ownable {
     CardNFT public cardNFT;
     RockPaperScissorsGame public gameContract;
@@ -15,18 +18,25 @@ contract GameSystem is Ownable {
     CardExchange public cardExchange;
     UserManager public userManager;
     
+    /// @notice Inicializa o GameSystem implantando todos os contratos de subsistema
+    /// @dev O contrato GameSystem se torna proprietário do CardNFT para habilitar cunhagem
     constructor() Ownable(msg.sender) {
-        // Deploy the CardNFT contract
+        // Implanta o contrato CardNFT
         cardNFT = new CardNFT(address(this));
 
-        // Deploy other contracts and link them
+        // Implanta outros contratos e os vincula
         userManager = new UserManager();
         gameContract = new RockPaperScissorsGame(cardNFT, userManager);
         packManager = new PackManager(cardNFT);
         cardExchange = new CardExchange(cardNFT);
     }
     
-    // Function to get contract addresses
+    /// @notice Retorna os endereços de todos os contratos de subsistema implantados
+    /// @return _cardNFT Endereço do contrato CardNFT
+    /// @return _gameContract Endereço do contrato RockPaperScissorsGame
+    /// @return _packManager Endereço do contrato PackManager
+    /// @return _cardExchange Endereço do contrato CardExchange
+    /// @return _userManager Endereço do contrato UserManager
     function getContractAddresses()
         external view
         returns (address _cardNFT, address _gameContract, address _packManager, address _cardExchange, address _userManager)

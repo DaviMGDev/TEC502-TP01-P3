@@ -17,7 +17,7 @@ func AuthMiddleware(authService *AuthService) gin.HandlerFunc {
 		}
 
 		tokenString := ""
-		
+
 		// Verificar se o header está no formato "Bearer <token>"
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			tokenString = authHeader[7:]
@@ -37,7 +37,7 @@ func AuthMiddleware(authService *AuthService) gin.HandlerFunc {
 		// Armazenar as claims no contexto para uso posterior
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
-		
+
 		c.Next()
 	}
 }

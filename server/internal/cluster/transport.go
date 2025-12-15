@@ -1,15 +1,15 @@
 package cluster
 
-// DTOs (Data Transfer Objects) para comunicação JSON
+// DTOs (Data Transfer Objects) used for JSON communication
 // -------------------------------------------------
 
-// JoinRequest representa o payload JSON enviado para /raft/join
+// JoinRequest is the JSON payload sent to /raft/join
 type JoinRequest struct {
 	NodeID      string `json:"node_id"`
 	NodeAddress string `json:"node_address"`
 }
 
-// CommandRequest representa o payload JSON enviado para /raft/command
+// CommandRequest is the JSON payload sent to /raft/command
 type CommandRequest struct {
 	EventData []byte `json:"event_data"`
 }
@@ -17,14 +17,14 @@ type CommandRequest struct {
 // Interfaces
 // -------------------------------------------------
 
-// ClusterTransportInterface define como o cluster se comunica externamente e internamente via HTTP
+// ClusterTransportInterface defines how the cluster communicates externally and internally via HTTP
 type ClusterTransportInterface interface {
-	// Start inicia o servidor HTTP (Gin) em background
+	// Start launches the HTTP server (Gin) in the background
 	Start() error
 
-	// JoinCluster é usado por um nó novo para pedir entrada no cluster
+	// JoinCluster is used by a new node to request admission to the cluster
 	JoinCluster(targetAddress string, myID string, myAddress string) error
 
-	// ForwardCommand é usado por um nó seguidor para repassar um evento ao líder
+	// ForwardCommand forwards an event to the cluster leader for application
 	ForwardCommand(leaderAddress string, eventBytes []byte) error
 }

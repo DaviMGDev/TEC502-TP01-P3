@@ -5,7 +5,7 @@ import (
 	"cod-server/internal/domain"
 )
 
-// Adaptador para tornar SqlUserRepository compatível com data.Repository[domain.UserInterface]
+// UserRepoAdapter adapts a SQL-backed UserRepository to the generic data.Repository[domain.UserInterface].
 type UserRepoAdapter struct {
 	repo UserRepository
 }
@@ -15,11 +15,11 @@ func NewUserRepoAdapter(repo UserRepository) data.Repository[domain.UserInterfac
 }
 
 func (a *UserRepoAdapter) Create(id string, entity domain.UserInterface) error {
-	// O UserInterface é implementado por *domain.User, então usamos type assertion
-	// Precisamos converter para *domain.User
+	// Convert interface to *domain.User when possible using type assertion.
+	// Otherwise, construct a minimal *domain.User from interface getters.
 	user, ok := entity.(*domain.User)
 	if !ok {
-		// Como User é um struct, podemos converter usando um ponteiro
+		// Build a struct from interface methods when direct casting is not possible.
 		return a.repo.Create(id, &domain.User{
 			ID:       entity.GetID(),
 			Username: entity.GetUsername(),
@@ -46,7 +46,7 @@ func (a *UserRepoAdapter) Update(id string, entity domain.UserInterface) error {
 		return a.repo.Update(id, &domain.User{
 			ID:       entity.GetID(),
 			Username: entity.GetUsername(),
-			// Similar issue here
+			// Similar conversion logic applies when updating from the interface type.
 			Password: "", // Isso não é ideal
 		})
 	}

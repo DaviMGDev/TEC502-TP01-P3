@@ -3,33 +3,38 @@ package commands
 import (
 	"cod-client/internal/services"
 	"cod-client/internal/state"
+
 	// "fmt"
 	"os"
 	"time"
 )
 
-// Manager encapsula a lógica de execução para todos os comandos do usuário.
+// Manager encapsula a lógica de execução de comando para todos os comandos do usuário.
+// Mantém referências ao serviço de eventos e estado da aplicação.
 type Manager struct {
 	eventSvc *services.EventService
 	appState *state.State
 }
 
-// NewManager cria uma nova instância do Command Manager.
+// NewManager cria uma nova instância do Command Manager com injeção de dependências.
 func NewManager(eventSvc *services.EventService, appState *state.State) *Manager {
 	return &Manager{eventSvc: eventSvc, appState: appState}
 }
 
-// --- Implementações dos Comandos ---
+// --- Funções de implementação de comandos ---
 
+// ExecChat envia uma mensagem de chat para a sala atual.
+// Requer que o usuário esteja logado primeiro.
 func (m *Manager) ExecChat(args []string) error {
 	if m.appState.UserID == "" {
 		m.appState.Chat.Write("You must be logged in to chat. Use /login <user> <pass>")
-		return nil // Retornar nil para não mostrar "Error: ..." na UI
+		return nil // Retornar nil previne mensagem "Error: ..." na UI
 	}
 	event := m.eventSvc.CreateChatEvent(args)
 	return m.eventSvc.Publish(event)
 }
 
+// ExecLogin tenta logar um usuário com o nome de usuário e senha fornecidos.
 func (m *Manager) ExecLogin(args []string) error {
 	if len(args) < 2 {
 		m.appState.Chat.Write("Usage: /login <username> <password>")
@@ -39,6 +44,7 @@ func (m *Manager) ExecLogin(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecRegister cria uma nova conta de usuário com o nome de usuário e senha fornecidos.
 func (m *Manager) ExecRegister(args []string) error {
 	if len(args) < 2 {
 		m.appState.Chat.Write("Usage: /register <username> <password>")
@@ -48,6 +54,7 @@ func (m *Manager) ExecRegister(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecClear clears the chat window display.
 func (m *Manager) ExecClear(args []string) error {
 	m.appState.Chat.Clear()
 	return nil
@@ -69,6 +76,7 @@ func (m *Manager) ExecHelp(args []string) error {
 	return nil
 }
 
+// ExecStart initiates a new game session for the logged-in user.
 func (m *Manager) ExecStart(args []string) error {
 	if m.appState.UserID == "" {
 		m.appState.Chat.Write("You must be logged in to start a game. Use /login <user> <pass>")
@@ -78,6 +86,7 @@ func (m *Manager) ExecStart(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecPlay plays a specific card from the user's hand during an active game.
 func (m *Manager) ExecPlay(args []string) error {
 	if m.appState.UserID == "" {
 		m.appState.Chat.Write("You must be logged in to play a card. Use /login <user> <pass>")
@@ -91,6 +100,7 @@ func (m *Manager) ExecPlay(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecSurrender forfeits the current game for the logged-in user.
 func (m *Manager) ExecSurrender(args []string) error {
 	if m.appState.UserID == "" {
 		m.appState.Chat.Write("You must be logged in to surrender. Use /login <user> <pass>")
@@ -100,6 +110,7 @@ func (m *Manager) ExecSurrender(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecJoin joins an existing game session by room ID.
 func (m *Manager) ExecJoin(args []string) error {
 	if m.appState.UserID == "" {
 		m.appState.Chat.Write("You must be logged in to join a game. Use /login <user> <pass>")
@@ -113,6 +124,7 @@ func (m *Manager) ExecJoin(args []string) error {
 	return m.eventSvc.Publish(event)
 }
 
+// ExecExit gracefully closes the MQTT connection and terminates the application.
 func (m *Manager) ExecExit(args []string) error {
 	m.appState.Chat.Write("Exiting chat...")
 	time.Sleep(1 * time.Second)
